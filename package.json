@@ -1,0 +1,18 @@
+{
+  "name": "learn_webgl",
+  "version": "0.0.0",
+  "description": "Tutorials from learningwebgl.com",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Joe Wilm <jdwilm@gmail.com> (http://jwilm.com/)",
+  "license": "MIT",
+  "devDependencies": {
+    "grunt": "*",
+    "grunt-contrib-watch": "*",
+    "grunt-contrib-concat": "*",
+    "grunt-contrib-sass": "*",
+    "grunt-contrib-jshint": "*"
+  }
+}
