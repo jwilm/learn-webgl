@@ -37,98 +37,188 @@ var tick = function tick (gl, shaderProgram, buffers) {
   animate();
 };
 
-var rTriangle = 0;
-var rSquare = 0;
+var rPyramid = 0;
+var rCube = 0;
 
 var timeLast = Date.now();
 var animate = function animate () {
   var timeNow = Date.now();
   var elapsed = timeLast - timeNow;
   timeLast = timeNow;
-  rSquare += (75 * elapsed) / 1000;
-  rTriangle += (90 * elapsed) / 1000;
+  rCube += (75 * elapsed) / 1000;
+  rPyramid += (90 * elapsed) / 1000;
 };
 
 var initBuffers = function(gl) {
 
-  var triangleVertexPositionBuffer;
-  var squareVertexPositionBuffer;
-  var triangleVertexColorBuffer;
-  var squareVertexColorBuffer;
+  var pyramidVertexPositionBuffer;
+  var cubeVertexPositionBuffer;
+  var pyramidVertexColorBuffer;
+  var cubeVertexColorBuffer;
+  var cubeVertexIndexBuffer;
 
   // create buffer on graphics card
-  triangleVertexPositionBuffer = gl.createBuffer();
+  pyramidVertexPositionBuffer = gl.createBuffer();
 
   // specify buffer to use for subsequent operations
-  gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
+  gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexPositionBuffer);
 
   var vertices = [
-    0.0,  1.0,  0.0,
-   -1.0, -1.0,  0.0,
-    1.0, -1.0,  0.0
+    // Front face
+     0.0,  1.0,  0.0,
+    -1.0, -1.0,  1.0,
+     1.0, -1.0,  1.0,
+    // Right face
+     0.0,  1.0,  0.0,
+     1.0, -1.0,  1.0,
+     1.0, -1.0, -1.0,
+    // Back face
+     0.0,  1.0,  0.0,
+     1.0, -1.0, -1.0,
+    -1.0, -1.0, -1.0,
+    // Left face
+     0.0,  1.0,  0.0,
+    -1.0, -1.0, -1.0,
+    -1.0, -1.0,  1.0
   ];
 
   // Send vertices array to buffer
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
   // Properties for convenience, not WebGL related
-  triangleVertexPositionBuffer.itemSize = 3; // elements per vertex
-  triangleVertexPositionBuffer.numItems = 3; // num vertices
+  pyramidVertexPositionBuffer.itemSize = 3; // elements per vertex
+  pyramidVertexPositionBuffer.numItems = vertices.length / 3; // num vertices
 
   // Color buffer for triangle
-  triangleVertexColorBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexColorBuffer);
+  pyramidVertexColorBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexColorBuffer);
   var colors = [
+    // Front face
     1.0, 0.0, 0.0, 1.0,
     0.0, 1.0, 0.0, 1.0,
-    0.0, 0.0, 1.0, 1.0
+    0.0, 0.0, 1.0, 1.0,
+    // Right face
+    1.0, 0.0, 0.0, 1.0,
+    0.0, 0.0, 1.0, 1.0,
+    0.0, 1.0, 0.0, 1.0,
+    // Back face
+    1.0, 0.0, 0.0, 1.0,
+    0.0, 1.0, 0.0, 1.0,
+    0.0, 0.0, 1.0, 1.0,
+    // Left face
+    1.0, 0.0, 0.0, 1.0,
+    0.0, 0.0, 1.0, 1.0,
+    0.0, 1.0, 0.0, 1.0
   ];
-
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-  triangleVertexColorBuffer.itemSize = 4;
-  triangleVertexColorBuffer.numItems = 3;
+  pyramidVertexColorBuffer.itemSize = 4;
+  pyramidVertexColorBuffer.numItems = colors.length / 4;
 
-  // Do it all over again for a square
-  squareVertexPositionBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+  // Do it all over again for a cube
+  cubeVertexPositionBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
   vertices = [
-    1.0,  1.0,  0.0,
-   -1.0,  1.0,  0.0,
-    1.0, -1.0,  0.0,
-   -1.0, -1.0,  0.0
+    // Front face
+    -1.0, -1.0,  1.0,
+     1.0, -1.0,  1.0,
+     1.0,  1.0,  1.0,
+    -1.0,  1.0,  1.0,
+
+    // Back face
+    -1.0, -1.0, -1.0,
+    -1.0,  1.0, -1.0,
+     1.0,  1.0, -1.0,
+     1.0, -1.0, -1.0,
+
+    // Top face
+    -1.0,  1.0, -1.0,
+    -1.0,  1.0,  1.0,
+     1.0,  1.0,  1.0,
+     1.0,  1.0, -1.0,
+
+    // Bottom face
+    -1.0, -1.0, -1.0,
+     1.0, -1.0, -1.0,
+     1.0, -1.0,  1.0,
+    -1.0, -1.0,  1.0,
+
+    // Right face
+     1.0, -1.0, -1.0,
+     1.0,  1.0, -1.0,
+     1.0,  1.0,  1.0,
+     1.0, -1.0,  1.0,
+
+    // Left face
+    -1.0, -1.0, -1.0,
+    -1.0, -1.0,  1.0,
+    -1.0,  1.0,  1.0,
+    -1.0,  1.0, -1.0,
   ];
 
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-  squareVertexPositionBuffer.itemSize = 3;
-  squareVertexPositionBuffer.numItems = 4;
+  cubeVertexPositionBuffer.itemSize = 3;
+  cubeVertexPositionBuffer.numItems = vertices.length / 3;
 
-  // Color buffer for square
-  squareVertexColorBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
+  // Color buffer for cube
+  cubeVertexColorBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexColorBuffer);
   colors = [
-    0.5, 0.5, 1.0, 1.0,
-    0.5, 0.5, 1.0, 1.0,
-    0.5, 0.5, 1.0, 1.0,
-    0.5, 0.5, 1.0, 1.0
+    [1.0, 0.0, 0.0, 1.0], // Front face
+    [1.0, 1.0, 0.0, 1.0], // Back face
+    [0.0, 1.0, 0.0, 1.0], // Top face
+    [1.0, 0.5, 0.5, 1.0], // Bottom face
+    [1.0, 0.0, 1.0, 1.0], // Right face
+    [0.0, 0.0, 1.0, 1.0]  // Left face
   ];
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-  squareVertexColorBuffer.itemSize = 4;
-  squareVertexColorBuffer.numItems = 4;
+
+  var unpackedColors = [];
+  colors.forEach(function(color) {
+    var repeatedColor = [];
+    for(var i=0; i!==4; i++) {
+      repeatedColor = repeatedColor.concat(color);
+    }
+
+    unpackedColors = unpackedColors.concat(repeatedColor);
+  });
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(unpackedColors), gl.STATIC_DRAW);
+  cubeVertexColorBuffer.itemSize = 4;
+  cubeVertexColorBuffer.numItems = 24;
+
+  cubeVertexIndexBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
+
+  var cubeVertexIndices = [
+    0, 1, 2,      0, 2, 3,    // Front face
+    4, 5, 6,      4, 6, 7,    // Back face
+    8, 9, 10,     8, 10, 11,  // Top face
+    12, 13, 14,   12, 14, 15, // Bottom face
+    16, 17, 18,   16, 18, 19, // Right face
+    20, 21, 22,   20, 22, 23  // Left face
+  ];
+
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
+                new Uint16Array(cubeVertexIndices),
+                gl.STATIC_DRAW);
+
+  cubeVertexIndexBuffer.itemSize = 1;
+  cubeVertexIndexBuffer.numItems = cubeVertexIndices.length;
 
   return {
-    triangleVertexPositionBuffer: triangleVertexPositionBuffer,
-    squareVertexPositionBuffer: squareVertexPositionBuffer,
-    triangleVertexColorBuffer: triangleVertexColorBuffer,
-    squareVertexColorBuffer: squareVertexColorBuffer
+    pyramidVertexPositionBuffer: pyramidVertexPositionBuffer,
+    cubeVertexPositionBuffer: cubeVertexPositionBuffer,
+    pyramidVertexColorBuffer: pyramidVertexColorBuffer,
+    cubeVertexColorBuffer: cubeVertexColorBuffer,
+    cubeVertexIndexBuffer: cubeVertexIndexBuffer
   };
 };
 
 var drawScene = function(gl, shaderProgram, buffers) {
 
-  var triangleVertexPositionBuffer = buffers.triangleVertexPositionBuffer;
-  var squareVertexPositionBuffer = buffers.squareVertexPositionBuffer;
-  var triangleVertexColorBuffer = buffers.triangleVertexColorBuffer;
-  var squareVertexColorBuffer = buffers.squareVertexColorBuffer;
+  var pyramidVertexPositionBuffer = buffers.pyramidVertexPositionBuffer;
+  var cubeVertexPositionBuffer = buffers.cubeVertexPositionBuffer;
+  var pyramidVertexColorBuffer = buffers.pyramidVertexColorBuffer;
+  var cubeVertexColorBuffer = buffers.cubeVertexColorBuffer;
+  var cubeVertexIndexBuffer = buffers.cubeVertexIndexBuffer;
 
   // Tell webGL about the canvas
   gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
@@ -150,18 +240,18 @@ var drawScene = function(gl, shaderProgram, buffers) {
 
   mvStack.push(mvMatrix);
 
-  mat4.rotate(mvMatrix, mvMatrix, D2R * rTriangle, [0, 1, 0]);
+  mat4.rotate(mvMatrix, mvMatrix, D2R * rPyramid, [0, 1, 0]);
 
   // Draw triangle
-  gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
+  gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexPositionBuffer);
   gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
-    triangleVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+    pyramidVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
   // Assign the WebGLBuffer object currently bound to the ARRAY_BUFFER target
   // to the vertex attribute at the passed index.
-  gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexColorBuffer);
+  gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexColorBuffer);
   gl.vertexAttribPointer(shaderProgram.vertexColorAttribute,
-                         triangleVertexColorBuffer.itemSize,
+                         pyramidVertexColorBuffer.itemSize,
                          gl.FLOAT,
                          false,
                          0,
@@ -174,7 +264,7 @@ var drawScene = function(gl, shaderProgram, buffers) {
   // WebGL now has array of numbers it knows to treat as vertex positions, and
   // it also knows about matrices. Draw the vertex array as triangles starting
   // at item 0, go to numItems element
-  gl.drawArrays(gl.TRIANGLES, 0, triangleVertexPositionBuffer.numItems);
+  gl.drawArrays(gl.TRIANGLES, 0, pyramidVertexPositionBuffer.numItems);
 
   mvMatrix = mvStack.pop();
   mvStack.push(mvMatrix);
@@ -182,25 +272,30 @@ var drawScene = function(gl, shaderProgram, buffers) {
   // Draw the square now.. relative to current mvMatrix pos
   mat4.translate(mvMatrix, mvMatrix, [3.0, 0.0, 0.0]);
 
-  mat4.rotate(mvMatrix, mvMatrix, D2R * rSquare, [1, 0, 0]);
+  mat4.rotate(mvMatrix, mvMatrix, D2R * rCube, [1, 1, 1]);
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
   gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
-    squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+    cubeVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
+  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexColorBuffer);
   gl.vertexAttribPointer(shaderProgram.vertexColorAttribute,
-                         squareVertexColorBuffer.itemSize,
+                         cubeVertexColorBuffer.itemSize,
                          gl.FLOAT,
                          false,
                          0,
                          0);
 
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
   setMatrixUniforms(gl, shaderProgram, pMatrix, mvMatrix);
+  gl.drawElements(gl.TRIANGLES,
+                  cubeVertexIndexBuffer.numItems,
+                  gl.UNSIGNED_SHORT,
+                  0);
 
   // triangle strip -> first 3 vertices for first triangle, next vertex plus
   // previous two for next triangle and so on.
-  gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems);
+  gl.drawArrays(gl.TRIANGLE, 0, cubeVertexPositionBuffer.numItems);
 
   mvMatrix = mvStack.pop();
 };
