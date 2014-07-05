@@ -20,6 +20,12 @@ var GLStart = function () {
 };
 
 var initBuffers = function(gl) {
+
+  var triangleVertexPositionBuffer;
+  var squareVertexPositionBuffer;
+  var triangleVertexColorBuffer;
+  var squareVertexColorBuffer;
+
   // create buffer on graphics card
   triangleVertexPositionBuffer = gl.createBuffer();
 
@@ -39,6 +45,19 @@ var initBuffers = function(gl) {
   triangleVertexPositionBuffer.itemSize = 3; // elements per vertex
   triangleVertexPositionBuffer.numItems = 3; // num vertices
 
+  // Color buffer for triangle
+  triangleVertexColorBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexColorBuffer);
+  var colors = [
+    1.0, 0.0, 0.0, 1.0,
+    0.0, 1.0, 0.0, 1.0,
+    0.0, 0.0, 1.0, 1.0
+  ];
+
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+  triangleVertexColorBuffer.itemSize = 4;
+  triangleVertexColorBuffer.numItems = 3;
+
   // Do it all over again for a square
   squareVertexPositionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
@@ -50,12 +69,27 @@ var initBuffers = function(gl) {
   ];
 
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-
   squareVertexPositionBuffer.itemSize = 3;
   squareVertexPositionBuffer.numItems = 4;
+
+  // Color buffer for square
+  squareVertexColorBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
+  colors = [
+    0.5, 0.5, 1.0, 1.0,
+    0.5, 0.5, 1.0, 1.0,
+    0.5, 0.5, 1.0, 1.0,
+    0.5, 0.5, 1.0, 1.0
+  ];
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+  squareVertexColorBuffer.itemSize = 4;
+  squareVertexColorBuffer.numItems = 4;
+
   return {
     triangleVertexPositionBuffer: triangleVertexPositionBuffer,
-    squareVertexPositionBuffer: squareVertexPositionBuffer
+    squareVertexPositionBuffer: squareVertexPositionBuffer,
+    triangleVertexColorBuffer: triangleVertexColorBuffer,
+    squareVertexColorBuffer: squareVertexColorBuffer
   };
 };
 
@@ -63,13 +97,14 @@ var drawScene = function(gl, shaderProgram, buffers) {
 
   var triangleVertexPositionBuffer = buffers.triangleVertexPositionBuffer;
   var squareVertexPositionBuffer = buffers.squareVertexPositionBuffer;
+  var triangleVertexColorBuffer = buffers.triangleVertexColorBuffer;
+  var squareVertexColorBuffer = buffers.squareVertexColorBuffer;
 
   // Tell webGL about the canvas
   gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
 
   // Clear the canvas
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
 
   // setup scene perspective
   var viewportAspectRatio = gl.viewportWidth / gl.viewportHeight;
@@ -88,6 +123,17 @@ var drawScene = function(gl, shaderProgram, buffers) {
   gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
     triangleVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
+  // Assign the WebGLBuffer object currently bound to the ARRAY_BUFFER target
+  // to the vertex attribute at the passed index.
+  gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexColorBuffer);
+  gl.vertexAttribPointer(shaderProgram.vertexColorAttribute,
+                         triangleVertexColorBuffer.itemSize,
+                         gl.FLOAT,
+                         false,
+                         0,
+                         0);
+
+
   // send mv matrix stuff to gfx card
   setMatrixUniforms(gl, shaderProgram, pMatrix, mvMatrix);
 
@@ -102,6 +148,14 @@ var drawScene = function(gl, shaderProgram, buffers) {
   gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
   gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
     squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
+  gl.vertexAttribPointer(shaderProgram.vertexColorAttribute,
+                         squareVertexColorBuffer.itemSize,
+                         gl.FLOAT,
+                         false,
+                         0,
+                         0);
 
   setMatrixUniforms(gl, shaderProgram, pMatrix, mvMatrix);
 
@@ -159,8 +213,11 @@ var initShaders = function initShaders (gl) {
 
   shaderProgram.vertexPositionAttribute =
     gl.getAttribLocation(shaderProgram, 'aVertexPosition');
-
   gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+
+  shaderProgram.vertexColorAttribute =
+    gl.getAttribLocation(shaderProgram, 'aVertexColor');
+  gl.enableVertexAttribArray(shaderProgram.vertexColorAttribute);
 
   shaderProgram.pMatrixUniform =
     gl.getUniformLocation(shaderProgram, 'uPMatrix');
