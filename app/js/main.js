@@ -32,7 +32,7 @@ var GLStart = function () {
 };
 
 var tick = function tick (gl, shaderProgram, buffers) {
-  webkitRequestAnimationFrame(tick.bind(null, gl, shaderProgram, buffers));
+  requestAnimationFrame(tick.bind(null, gl, shaderProgram, buffers));
   drawScene(gl, shaderProgram, buffers);
   animate();
 };
