@@ -60,7 +60,6 @@ var GLStart = function () {
 };
 
 var handleDownKeys = function () {
-  console.log(pressedKeys);
   if(pressedKeys[37]) {
     ySpeed -= 0.5;
   }
