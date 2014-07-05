@@ -16,6 +16,8 @@ MVStack.prototype.pop = function (mvMatrix) {
 
 var mvStack = new MVStack();
 
+var pressedKeys = {};
+var selectedTexture = 0;
 var GLStart = function () {
   var canvas = document.getElementById('gl');
   canvas.width = window.innerHeight;
@@ -24,52 +26,119 @@ var GLStart = function () {
   var gl = initGL(canvas);
   var shaderProgram = initShaders(gl);
   var buffers = initBuffers(gl);
-  var texture = initTexture(gl);
+  var textures = initTextures(gl);
 
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
   gl.enable(gl.DEPTH_TEST);
 
-  var tick = function (gl, shaderProgram, buffers, texture) {
+  var ignoreKeys = [37, 38, 39, 40];
+  window.addEventListener('keydown', function (e) {
+    pressedKeys[e.keyCode] = true;
+
+    if(e.keyCode === 70) {
+      selectedTexture += 1;
+      console.log(selectedTexture);
+    }
+
+    if(ignoreKeys.indexOf(e.keyCode) !== -1) {
+      e.preventDefault();
+    }
+  });
+
+  window.addEventListener('keyup', function (e) {
+    pressedKeys[e.keyCode] = false;
+  });
+
+  var tick = function (gl, shaderProgram, buffers, textures) {
     requestAnimationFrame(tick);
-    drawScene(gl, shaderProgram, buffers, texture);
+    drawScene(gl, shaderProgram, buffers, textures);
+    handleDownKeys();
     animate();
-  }.bind(null, gl, shaderProgram, buffers, texture);
+  }.bind(null, gl, shaderProgram, buffers, textures);
 
   tick();
 };
 
+var handleDownKeys = function () {
+  console.log(pressedKeys);
+  if(pressedKeys[37]) {
+    ySpeed -= 0.5;
+  }
+
+  if(pressedKeys[39]) {
+    ySpeed += 0.5;
+  }
+
+  if(pressedKeys[40]) {
+    xSpeed -= 0.5;
+  }
+
+  if(pressedKeys[38]) {
+    xSpeed += 0.5;
+  }
+
+  if(pressedKeys[33]) {
+    zPos += 0.5;
+  }
+
+  if(pressedKeys[34]) {
+    zPos -= 0.5;
+  }
+};
+
+var zPos = -5.0;
 var xRot = 0;
 var yRot = 0;
-var zRot = 0;
+
+var xSpeed = 50;
+var ySpeed = 50;
 
 var timeLast = Date.now();
 var animate = function animate () {
   var timeNow = Date.now();
   var elapsed = timeLast - timeNow;
   timeLast = timeNow;
-  xRot += (75 * elapsed) / 1000;
-  yRot += (50 * elapsed) / 1000;
-  zRot += (90 * elapsed) / 1000;
+  xRot += (xSpeed * elapsed) / 1000;
+  yRot += (ySpeed * elapsed) / 1000;
 };
 
-var initTexture = function (gl) {
-  texture = gl.createTexture();
-  texture.image = new Image();
-  texture.image.onload = function () {
-    handleLoadedTexture(gl, texture);
+var initTextures = function (gl) {
+  var textures = [];
+  textures.push(gl.createTexture());
+  textures.push(gl.createTexture());
+  textures.push(gl.createTexture());
+  var image = new Image();
+  image.onload = function () {
+    handleLoadedTextures(gl, textures, image);
   };
 
-  texture.image.src = "/img/nehe.gif";
-  return texture;
+  image.src = '/img/crate.gif';
+  return textures;
 };
 
-var handleLoadedTexture = function handleLoadedTexture (gl, texture) {
-  gl.bindTexture(gl.TEXTURE_2D, texture);
+var handleLoadedTextures = function handleLoadedTexture (gl, textures, image) {
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE,
-                texture.image);
+
+  // nearest
+  gl.bindTexture(gl.TEXTURE_2D, textures[0]);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+
+  // linear
+  gl.bindTexture(gl.TEXTURE_2D, textures[1]);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+
+  // Mip map
+  gl.bindTexture(gl.TEXTURE_2D, textures[2]);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER,
+                   gl.LINEAR_MIPMAP_NEAREST);
+  gl.generateMipmap(gl.TEXTURE_2D);
+
   gl.bindTexture(gl.TEXTURE_2D, null);
 };
 
@@ -197,7 +266,7 @@ var initBuffers = function(gl) {
   };
 };
 
-var drawScene = function(gl, shaderProgram, buffers, texture) {
+var drawScene = function(gl, shaderProgram, buffers, textures) {
 
   var cubeVertexPositionBuffer = buffers.cubeVertexPositionBuffer;
   var cubeVertexTextureCoordBuffer = buffers.cubeVertexTextureCoordBuffer;
@@ -221,11 +290,10 @@ var drawScene = function(gl, shaderProgram, buffers, texture) {
   mvStack.push(mvMatrix);
 
   // Draw the square now.. relative to current mvMatrix pos
-  mat4.translate(mvMatrix, mvMatrix, [0.0, 0.0, -7.0]);
+  mat4.translate(mvMatrix, mvMatrix, [0.0, 0.0, zPos]);
 
   mat4.rotate(mvMatrix, mvMatrix, D2R * xRot, [1, 0, 0]);
   mat4.rotate(mvMatrix, mvMatrix, D2R * yRot, [0, 1, 0]);
-  mat4.rotate(mvMatrix, mvMatrix, D2R * zRot, [0, 0, 1]);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
   gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
@@ -240,7 +308,7 @@ var drawScene = function(gl, shaderProgram, buffers, texture) {
                          0);
 
   gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.bindTexture(gl.TEXTURE_2D, textures[selectedTexture % textures.length]);
   gl.uniform1i(shaderProgram.samplerUniform, 0);
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
