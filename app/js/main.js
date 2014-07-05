@@ -37,7 +37,6 @@ var tick = function tick (gl, shaderProgram, buffers) {
   animate();
 };
 
-var rPyramid = 0;
 var rCube = 0;
 
 var timeLast = Date.now();
@@ -46,73 +45,13 @@ var animate = function animate () {
   var elapsed = timeLast - timeNow;
   timeLast = timeNow;
   rCube += (75 * elapsed) / 1000;
-  rPyramid += (90 * elapsed) / 1000;
 };
 
 var initBuffers = function(gl) {
 
-  var pyramidVertexPositionBuffer;
   var cubeVertexPositionBuffer;
-  var pyramidVertexColorBuffer;
   var cubeVertexColorBuffer;
   var cubeVertexIndexBuffer;
-
-  // create buffer on graphics card
-  pyramidVertexPositionBuffer = gl.createBuffer();
-
-  // specify buffer to use for subsequent operations
-  gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexPositionBuffer);
-
-  var vertices = [
-    // Front face
-     0.0,  1.0,  0.0,
-    -1.0, -1.0,  1.0,
-     1.0, -1.0,  1.0,
-    // Right face
-     0.0,  1.0,  0.0,
-     1.0, -1.0,  1.0,
-     1.0, -1.0, -1.0,
-    // Back face
-     0.0,  1.0,  0.0,
-     1.0, -1.0, -1.0,
-    -1.0, -1.0, -1.0,
-    // Left face
-     0.0,  1.0,  0.0,
-    -1.0, -1.0, -1.0,
-    -1.0, -1.0,  1.0
-  ];
-
-  // Send vertices array to buffer
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-
-  // Properties for convenience, not WebGL related
-  pyramidVertexPositionBuffer.itemSize = 3; // elements per vertex
-  pyramidVertexPositionBuffer.numItems = vertices.length / 3; // num vertices
-
-  // Color buffer for triangle
-  pyramidVertexColorBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexColorBuffer);
-  var colors = [
-    // Front face
-    1.0, 0.0, 0.0, 1.0,
-    0.0, 1.0, 0.0, 1.0,
-    0.0, 0.0, 1.0, 1.0,
-    // Right face
-    1.0, 0.0, 0.0, 1.0,
-    0.0, 0.0, 1.0, 1.0,
-    0.0, 1.0, 0.0, 1.0,
-    // Back face
-    1.0, 0.0, 0.0, 1.0,
-    0.0, 1.0, 0.0, 1.0,
-    0.0, 0.0, 1.0, 1.0,
-    // Left face
-    1.0, 0.0, 0.0, 1.0,
-    0.0, 0.0, 1.0, 1.0,
-    0.0, 1.0, 0.0, 1.0
-  ];
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-  pyramidVertexColorBuffer.itemSize = 4;
-  pyramidVertexColorBuffer.numItems = colors.length / 4;
 
   // Do it all over again for a cube
   cubeVertexPositionBuffer = gl.createBuffer();
@@ -204,9 +143,7 @@ var initBuffers = function(gl) {
   cubeVertexIndexBuffer.numItems = cubeVertexIndices.length;
 
   return {
-    pyramidVertexPositionBuffer: pyramidVertexPositionBuffer,
     cubeVertexPositionBuffer: cubeVertexPositionBuffer,
-    pyramidVertexColorBuffer: pyramidVertexColorBuffer,
     cubeVertexColorBuffer: cubeVertexColorBuffer,
     cubeVertexIndexBuffer: cubeVertexIndexBuffer
   };
@@ -214,9 +151,7 @@ var initBuffers = function(gl) {
 
 var drawScene = function(gl, shaderProgram, buffers) {
 
-  var pyramidVertexPositionBuffer = buffers.pyramidVertexPositionBuffer;
   var cubeVertexPositionBuffer = buffers.cubeVertexPositionBuffer;
-  var pyramidVertexColorBuffer = buffers.pyramidVertexColorBuffer;
   var cubeVertexColorBuffer = buffers.cubeVertexColorBuffer;
   var cubeVertexIndexBuffer = buffers.cubeVertexIndexBuffer;
 
@@ -238,35 +173,6 @@ var drawScene = function(gl, shaderProgram, buffers) {
   // Multiple mvMatrix by translation vector
   mat4.translate(mvMatrix, mvMatrix, [-1.5, 0.0, -7.0]);
 
-  mvStack.push(mvMatrix);
-
-  mat4.rotate(mvMatrix, mvMatrix, D2R * rPyramid, [0, 1, 0]);
-
-  // Draw triangle
-  gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexPositionBuffer);
-  gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
-    pyramidVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-  // Assign the WebGLBuffer object currently bound to the ARRAY_BUFFER target
-  // to the vertex attribute at the passed index.
-  gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexColorBuffer);
-  gl.vertexAttribPointer(shaderProgram.vertexColorAttribute,
-                         pyramidVertexColorBuffer.itemSize,
-                         gl.FLOAT,
-                         false,
-                         0,
-                         0);
-
-
-  // send mv matrix stuff to gfx card
-  setMatrixUniforms(gl, shaderProgram, pMatrix, mvMatrix);
-
-  // WebGL now has array of numbers it knows to treat as vertex positions, and
-  // it also knows about matrices. Draw the vertex array as triangles starting
-  // at item 0, go to numItems element
-  gl.drawArrays(gl.TRIANGLES, 0, pyramidVertexPositionBuffer.numItems);
-
-  mvMatrix = mvStack.pop();
   mvStack.push(mvMatrix);
 
   // Draw the square now.. relative to current mvMatrix pos
