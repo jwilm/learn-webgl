@@ -52,6 +52,13 @@ module.exports = function(grunt) {
         tasks: ['compile:shaders']
       }
     },
+    express: {
+      serve: {
+        options: {
+          script: 'server.js'
+        }
+      }
+    },
     jshint: {
       options: {
         curly: true,
@@ -71,10 +78,12 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-sass');
   grunt.loadNpmTasks('grunt-contrib-concat');
   grunt.loadNpmTasks('grunt-contrib-jshint');
+  grunt.loadNpmTasks('grunt-express-server');
 
   // Default task(s).
-  grunt.registerTask('build', ['sass:dist', 'jshint', 'concat:dist']);
-  grunt.registerTask('default', ['compile', 'build', 'watch']);
+  grunt.registerTask('build',
+                     ['compile', 'sass:dist', 'jshint', 'concat:dist']);
+  grunt.registerTask('default', ['express:serve', 'compile', 'build', 'watch']);
 
   /**
    * compile:shaders - turn shaders into strings and save them into

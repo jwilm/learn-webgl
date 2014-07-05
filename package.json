@@ -17,6 +17,8 @@
   },
   "dependencies": {
     "glob": "~4.0.3",
-    "bluebird": "~2.1.3"
+    "bluebird": "~2.1.3",
+    "express": "~4.5.0",
+    "grunt-express-server": "~0.4.17"
   }
 }
