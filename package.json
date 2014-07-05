@@ -14,5 +14,9 @@
     "grunt-contrib-concat": "*",
     "grunt-contrib-sass": "*",
     "grunt-contrib-jshint": "*"
+  },
+  "dependencies": {
+    "glob": "~4.0.3",
+    "bluebird": "~2.1.3"
   }
 }
