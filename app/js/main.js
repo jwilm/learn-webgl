@@ -1,8 +1,20 @@
-var triangleVertexPositionBuffer,
-  squareVertexPositionBuffer,
-  gl,
-  mvMatrix = mat4.create(),
-  pMatrix = mat4.create();
+var D2R = Math.PI / 180;
+var R2D = 180 / Math.PI;
+
+var MVStack = function () {
+  this.stack = [];
+};
+
+MVStack.prototype.push = function (mvMatrix) {
+  this.stack.push(mat4.clone(mvMatrix));
+  return this;
+};
+
+MVStack.prototype.pop = function (mvMatrix) {
+  return this.stack.pop();
+};
+
+var mvStack = new MVStack();
 
 var GLStart = function () {
   var canvas = document.getElementById('gl');
@@ -16,7 +28,25 @@ var GLStart = function () {
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
   gl.enable(gl.DEPTH_TEST);
 
+  tick(gl, shaderProgram, buffers);
+};
+
+var tick = function tick (gl, shaderProgram, buffers) {
+  webkitRequestAnimationFrame(tick.bind(null, gl, shaderProgram, buffers));
   drawScene(gl, shaderProgram, buffers);
+  animate();
+};
+
+var rTriangle = 0;
+var rSquare = 0;
+
+var timeLast = Date.now();
+var animate = function animate () {
+  var timeNow = Date.now();
+  var elapsed = timeLast - timeNow;
+  timeLast = timeNow;
+  rSquare += (75 * elapsed) / 1000;
+  rTriangle += (90 * elapsed) / 1000;
 };
 
 var initBuffers = function(gl) {
@@ -118,6 +148,10 @@ var drawScene = function(gl, shaderProgram, buffers) {
   // Multiple mvMatrix by translation vector
   mat4.translate(mvMatrix, mvMatrix, [-1.5, 0.0, -7.0]);
 
+  mvStack.push(mvMatrix);
+
+  mat4.rotate(mvMatrix, mvMatrix, D2R * rTriangle, [0, 1, 0]);
+
   // Draw triangle
   gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
   gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
@@ -142,8 +176,13 @@ var drawScene = function(gl, shaderProgram, buffers) {
   // at item 0, go to numItems element
   gl.drawArrays(gl.TRIANGLES, 0, triangleVertexPositionBuffer.numItems);
 
+  mvMatrix = mvStack.pop();
+  mvStack.push(mvMatrix);
+
   // Draw the square now.. relative to current mvMatrix pos
   mat4.translate(mvMatrix, mvMatrix, [3.0, 0.0, 0.0]);
+
+  mat4.rotate(mvMatrix, mvMatrix, D2R * rSquare, [1, 0, 0]);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
   gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
@@ -162,6 +201,8 @@ var drawScene = function(gl, shaderProgram, buffers) {
   // triangle strip -> first 3 vertices for first triangle, next vertex plus
   // previous two for next triangle and so on.
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems);
+
+  mvMatrix = mvStack.pop();
 };
 
 function initGL(canvas) {
