@@ -1,117 +1,173 @@
 var D2R = Math.PI / 180;
 var R2D = 180 / Math.PI;
 
-var MVStack = function () {
-  this.stack = [];
+function GLApplication () {
+  this.canvas = this.initCanvas('gl');
+  var gl = this.gl = this.initGL(this.canvas);
+
+  if(!this.gl) {
+    alert('Could not initialize WebGL');
+    return;
+  }
+
+  this.timeLast = Date.now();
+
+  // Initial animation values
+  this.zPos = -5.0;
+  this.xRot = 0;
+  this.yRot = 0;
+
+  this.xSpeed = 50;
+  this.ySpeed = 50;
+
+  // Create some matrices
+  this.mvMatrix = mat4.create();
+  this.pMatrix = mat4.create();
+  this.normalMatrix = mat3.create();
+  this.normalizedLD = vec3.create();
+
+  // Storage for stack of mvMatrix
+  this._mvStack = [];
+
+  gl.clearColor(0.0, 0.0, 0.0, 1.0);
+  gl.enable(gl.DEPTH_TEST);
+
+  this.shaderProgram = this.initShaders();
+  this.buffers = this.initBuffers();
+  this.texture = this.initTexture();
+
+  this.pressedKeys = {};
+  this.listenForKeyEvents();
+
+  this._el = this.cacheDOMElements();
+
+  this.tick = function () {
+    requestAnimationFrame(this.tick);
+    this.drawScene();
+    this.handleDownKeys();
+    this.timeLast = this.animate();
+  }.bind(this);
+
+  this.tick();
+}
+
+GLApplication.prototype.cacheDOMElements = function () {
+  return {
+    alpha: document.getElementById('alpha'),
+    blending: document.getElementById('blending'),
+    lighting: document.getElementById('lighting'),
+    ambientR: document.getElementById('ambientR'),
+    ambientG: document.getElementById('ambientG'),
+    ambientB: document.getElementById('ambientB'),
+    lightDirectionX: document.getElementById('lightDirectionX'),
+    lightDirectionY: document.getElementById('lightDirectionY'),
+    lightDirectionZ: document.getElementById('lightDirectionZ'),
+    directionalR: document.getElementById('directionalR'),
+    directionalG: document.getElementById('directionalG'),
+    directionalB: document.getElementById('directionalB')
+  };
 };
 
-MVStack.prototype.push = function (mvMatrix) {
-  this.stack.push(mat4.clone(mvMatrix));
+GLApplication.prototype.pushMVMatrix = function () {
+  // This is a very naive implementation of pushMVMatrix. We should probably
+  // initialize a number of matrices before rendering starts, copy into those
+  // until we run out, and only create new ones if necessary. Ideally, there
+  // will always be a sufficient stack available so no new allocations are
+  // done.
+  this._mvStack.push(mat4.clone(this.mvMatrix));
   return this;
 };
 
-MVStack.prototype.pop = function (mvMatrix) {
-  return this.stack.pop();
+GLApplication.prototype.popMVMatrix = function () {
+  this.mvMatrix = this._mvStack.pop();
+  return this.mvMatrix;
 };
 
-var mvStack = new MVStack();
-
-var pressedKeys = {};
-var selectedTexture = 0;
-
-var listenForKeyEvents = function () {
+GLApplication.prototype.listenForKeyEvents = function () {
   var ignoreKeys = [37, 38, 39, 40];
   window.addEventListener('keydown', function (e) {
-    pressedKeys[e.keyCode] = true;
+    this.pressedKeys[e.keyCode] = true;
 
     if(ignoreKeys.indexOf(e.keyCode) !== -1) {
       e.preventDefault();
     }
-  });
+  }.bind(this));
 
   window.addEventListener('keyup', function (e) {
-    pressedKeys[e.keyCode] = false;
-  });
+    this.pressedKeys[e.keyCode] = false;
+  }.bind(this));
 };
 
-var GLStart = function () {
-  var canvas = document.getElementById('gl');
+GLApplication.prototype.handleDownKeys = function () {
+  if(this.pressedKeys[37]) {
+    this.ySpeed -= 0.5;
+  }
+
+  if(this.pressedKeys[39]) {
+    this.ySpeed += 0.5;
+  }
+
+  if(this.pressedKeys[40]) {
+    this.xSpeed -= 0.5;
+  }
+
+  if(this.pressedKeys[38]) {
+    this.xSpeed += 0.5;
+  }
+
+  if(this.pressedKeys[33]) {
+    this.zPos += 0.5;
+  }
+
+  if(this.pressedKeys[34]) {
+    this.zPos -= 0.5;
+  }
+};
+
+GLApplication.prototype.initCanvas = function (id) {
+  var canvas = document.getElementById(id);
   canvas.width = window.innerHeight;
   canvas.height = window.innerWidth;
-
-  var gl = initGL(canvas);
-  var shaderProgram = initShaders(gl);
-  var buffers = initBuffers(gl);
-  var texture = initTexture(gl);
-
-  gl.clearColor(0.0, 0.0, 0.0, 1.0);
-  gl.enable(gl.DEPTH_TEST);
-  listenForKeyEvents();
-
-  var tick = function (gl, shaderProgram, buffers, texture) {
-    requestAnimationFrame(tick);
-    drawScene(gl, shaderProgram, buffers, texture);
-    handleDownKeys();
-    animate();
-  }.bind(null, gl, shaderProgram, buffers, texture);
-
-  tick();
+  return canvas;
 };
 
-var handleDownKeys = function () {
-  if(pressedKeys[37]) {
-    ySpeed -= 0.5;
+GLApplication.prototype.initGL = function (canvas) {
+  var gl = canvas.getContext('webgl') ||
+    canvas.getContext('experimental-webgl');
+
+  if(!gl) {
+    return null;
   }
 
-  if(pressedKeys[39]) {
-    ySpeed += 0.5;
-  }
+  gl.viewportWidth = canvas.width;
+  gl.viewportHeight = canvas.height;
 
-  if(pressedKeys[40]) {
-    xSpeed -= 0.5;
-  }
-
-  if(pressedKeys[38]) {
-    xSpeed += 0.5;
-  }
-
-  if(pressedKeys[33]) {
-    zPos += 0.5;
-  }
-
-  if(pressedKeys[34]) {
-    zPos -= 0.5;
-  }
+  return gl;
 };
 
-var zPos = -5.0;
-var xRot = 0;
-var yRot = 0;
-
-var xSpeed = 50;
-var ySpeed = 50;
-
-var timeLast = Date.now();
-var animate = function animate () {
+GLApplication.prototype.animate = function animate () {
   var timeNow = Date.now();
-  var elapsed = timeLast - timeNow;
-  timeLast = timeNow;
-  xRot += (xSpeed * elapsed) / 1000;
-  yRot += (ySpeed * elapsed) / 1000;
+  var elapsed = this.timeLast - timeNow;
+  this.xRot += (this.xSpeed * elapsed) / 1000;
+  this.yRot += (this.ySpeed * elapsed) / 1000;
+  return timeNow;
 };
 
-var initTexture = function (gl) {
-  var texture = gl.createTexture();
+GLApplication.prototype.initTexture = function initTexture () {
+  var texture = this.gl.createTexture();
   var image = new Image();
   image.onload = function () {
-    handleLoadedTexture(gl, texture, image);
-  };
+    this.handleLoadedTexture(texture, image);
+  }.bind(this);
 
   image.src = '/img/glass.gif';
   return texture;
 };
 
-var handleLoadedTexture = function handleLoadedTexture (gl, texture, image) {
+GLApplication.prototype.handleLoadedTexture =
+  function handleLoadedTexture (texture, image) {
+
+  var gl = this.gl;
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
   // Mip map
@@ -125,8 +181,8 @@ var handleLoadedTexture = function handleLoadedTexture (gl, texture, image) {
   gl.bindTexture(gl.TEXTURE_2D, null);
 };
 
-var initBuffers = function(gl) {
-
+GLApplication.prototype.initBuffers = function initBuffers () {
+  var gl = this.gl;
   var cubeVertexPositionBuffer;
   var cubeVertexTextureCoordBuffer;
   var cubeVertexNormalBuffer;
@@ -296,7 +352,11 @@ var initBuffers = function(gl) {
   };
 };
 
-var drawScene = function(gl, shaderProgram, buffers, texture) {
+GLApplication.prototype.drawScene = function() {
+  var gl = this.gl;
+  var shaderProgram = this.shaderProgram;
+  var buffers = this.buffers;
+  var texture = this.texture;
 
   var cubeVertexPositionBuffer = buffers.cubeVertexPositionBuffer;
   var cubeVertexTextureCoordBuffer = buffers.cubeVertexTextureCoordBuffer;
@@ -311,20 +371,18 @@ var drawScene = function(gl, shaderProgram, buffers, texture) {
 
   // setup scene perspective
   var viewportAspectRatio = gl.viewportWidth / gl.viewportHeight;
-  var mvMatrix = mat4.create();
-  var pMatrix = mat4.create();
 
   // Initialize pMatrix, mvMatrix
-  mat4.perspective(pMatrix, 45, viewportAspectRatio, 0.1, 100.0);
-  mat4.identity(mvMatrix);
+  mat4.perspective(this.pMatrix, 45, viewportAspectRatio, 0.1, 100.0);
+  mat4.identity(this.mvMatrix);
 
-  mvStack.push(mvMatrix);
+  this.pushMVMatrix();
 
   // Draw the square now.. relative to current mvMatrix pos
-  mat4.translate(mvMatrix, mvMatrix, [0.0, 0.0, zPos]);
+  mat4.translate(this.mvMatrix, this.mvMatrix, [0.0, 0.0, this.zPos]);
 
-  mat4.rotate(mvMatrix, mvMatrix, D2R * xRot, [1, 0, 0]);
-  mat4.rotate(mvMatrix, mvMatrix, D2R * yRot, [0, 1, 0]);
+  mat4.rotate(this.mvMatrix, this.mvMatrix, D2R * this.xRot, [1, 0, 0]);
+  mat4.rotate(this.mvMatrix, this.mvMatrix, D2R * this.yRot, [0, 1, 0]);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexNormalBuffer);
   gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute,
@@ -351,56 +409,56 @@ var drawScene = function(gl, shaderProgram, buffers, texture) {
   gl.uniform1i(shaderProgram.samplerUniform, 0);
 
   // will it blend?
-  var blending = document.getElementById('blending').checked;
+  var blending = this._el.blending.checked;
   if (blending) {
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.enable(gl.BLEND);
     gl.disable(gl.DEPTH_TEST);
     gl.uniform1f(shaderProgram.alphaUniform,
-                 parseFloat(document.getElementById('alpha').value));
+                 parseFloat(this._el.alpha.value));
   } else {
     gl.disable(gl.BLEND);
     gl.enable(gl.DEPTH_TEST);
   }
 
   // Set uUseLighting
-  var lighting = document.getElementById('lighting').checked;
+  var lighting = this._el.lighting.checked;
   gl.uniform1i(shaderProgram.useLightingUniform, lighting);
 
   if (lighting) {
     // Set ambient color uniforms
     gl.uniform3f(
       shaderProgram.ambientColorUniform,
-      parseFloat(document.getElementById('ambientR').value),
-      parseFloat(document.getElementById('ambientG').value),
-      parseFloat(document.getElementById('ambientB').value)
+      parseFloat(this._el.ambientR.value),
+      parseFloat(this._el.ambientG.value),
+      parseFloat(this._el.ambientB.value)
     );
 
     // Push lighting direction
     var lightingDirection = [
-      parseFloat(document.getElementById('lightDirectionX').value),
-      parseFloat(document.getElementById('lightDirectionY').value),
-      parseFloat(document.getElementById('lightDirectionZ').value),
+      parseFloat(this._el.lightDirectionX.value),
+      parseFloat(this._el.lightDirectionY.value),
+      parseFloat(this._el.lightDirectionZ.value),
     ];
-    var normalizedLD = vec3.create();
-    vec3.normalize(normalizedLD, lightingDirection);
+
+    vec3.normalize(this.normalizedLD, lightingDirection);
     // Direction specifies which way light is going, but calculation is based
     // on where light is coming from. Therefore, increase speed, drop down, and
     // reverse direction.
-    vec3.scale(normalizedLD, normalizedLD, -1);
-    gl.uniform3fv(shaderProgram.lightingDirectionUniform, normalizedLD);
+    vec3.scale(this.normalizedLD, this.normalizedLD, -1);
+    gl.uniform3fv(shaderProgram.lightingDirectionUniform, this.normalizedLD);
 
     // Push directional components
     gl.uniform3f(
       shaderProgram.directionalColorUniform,
-      parseFloat(document.getElementById('directionalR').value),
-      parseFloat(document.getElementById('directionalG').value),
-      parseFloat(document.getElementById('directionalB').value)
+      parseFloat(this._el.directionalR.value),
+      parseFloat(this._el.directionalG.value),
+      parseFloat(this._el.directionalB.value)
     );
   }
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
-  setMatrixUniforms(gl, shaderProgram, pMatrix, mvMatrix);
+  this.setMatrixUniforms();
   gl.drawElements(gl.TRIANGLES,
                   cubeVertexIndexBuffer.numItems,
                   gl.UNSIGNED_SHORT,
@@ -410,24 +468,12 @@ var drawScene = function(gl, shaderProgram, buffers, texture) {
   // previous two for next triangle and so on.
   gl.drawArrays(gl.TRIANGLE, 0, cubeVertexPositionBuffer.numItems);
 
-  mvMatrix = mvStack.pop();
+  this.popMVMatrix();
 };
 
-function initGL(canvas) {
-  var gl = canvas.getContext('webgl') ||
-    canvas.getContext('experimental-webgl');
 
-  if(!gl) {
-    return alert('Could not initialize WebGL');
-  }
-
-  gl.viewportWidth = canvas.width;
-  gl.viewportHeight = canvas.height;
-
-  return gl;
-}
-
-function loadShader(gl, source, type) {
+GLApplication.prototype.loadShader = function loadShader (source, type) {
+  var gl = this.gl;
   var shader;
 
   // Create and compile shader
@@ -442,11 +488,12 @@ function loadShader(gl, source, type) {
   }
 
   return shader;
-}
+};
 
-var initShaders = function initShaders (gl) {
-  var fragmentShader = getShader(gl, 'fragment/fragment');
-  var vertexShader = getShader(gl, 'vertex/vertex');
+GLApplication.prototype.initShaders = function initShaders () {
+  var gl = this.gl;
+  var fragmentShader = this.getShader('fragment/fragment');
+  var vertexShader = this.getShader('vertex/vertex');
 
   var shaderProgram = gl.createProgram();
 
@@ -494,7 +541,8 @@ var initShaders = function initShaders (gl) {
   return shaderProgram;
 };
 
-var getShader = function getShader (gl, path) {
+GLApplication.prototype.getShader = function getShader (path) {
+  var gl = this.gl;
   var shaderSource = shaders[path];
   if(!shaderSource) {
     return void 0;
@@ -525,16 +573,21 @@ var getShader = function getShader (gl, path) {
   return shader;
 };
 
-var normalMatrix = mat3.create();
-function setMatrixUniforms (gl, shaderProgram, pMatrix, mvMatrix) {
-  gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
-  gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
-  mat3.fromMat4(normalMatrix, mvMatrix);
-  mat3.invert(normalMatrix, normalMatrix);
-  mat3.transpose(normalMatrix, normalMatrix);
-  gl.uniformMatrix3fv(shaderProgram.nMatrixUniform, false, normalMatrix);
-}
+GLApplication.prototype.setMatrixUniforms = function setMatrixUniforms () {
+
+  var gl = this.gl;
+  var shaderProgram = this.shaderProgram;
+
+  gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, this.pMatrix);
+  gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, this.mvMatrix);
+  mat3.fromMat4(this.normalMatrix, this.mvMatrix);
+  mat3.invert(this.normalMatrix, this.normalMatrix);
+  mat3.transpose(this.normalMatrix, this.normalMatrix);
+  gl.uniformMatrix3fv(shaderProgram.nMatrixUniform, false, this.normalMatrix);
+};
 
 // Export main function
-App.GLStart = GLStart;
+App.GLStart = function () {
+  window.glApplication = new GLApplication();
+};
 
