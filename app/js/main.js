@@ -10,6 +10,9 @@ function GLApplication () {
     return;
   }
 
+  window.addEventListener('resize', this.handleViewportResize.bind(this));
+  this.handleViewportResize();
+
   this.timeLast = Date.now();
 
   // Initial animation values
@@ -50,6 +53,13 @@ function GLApplication () {
 
   this.tick();
 }
+
+GLApplication.prototype.handleViewportResize = function () {
+  this.canvas.width = window.innerWidth;
+  this.canvas.height = window.innerHeight;
+  this.gl.viewportWidth = this.canvas.width;
+  this.gl.viewportHeight = this.canvas.height;
+};
 
 GLApplication.prototype.cacheDOMElements = function () {
   return {
