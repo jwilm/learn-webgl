@@ -18,27 +18,11 @@ var mvStack = new MVStack();
 
 var pressedKeys = {};
 var selectedTexture = 0;
-var GLStart = function () {
-  var canvas = document.getElementById('gl');
-  canvas.width = window.innerHeight;
-  canvas.height = window.innerWidth;
 
-  var gl = initGL(canvas);
-  var shaderProgram = initShaders(gl);
-  var buffers = initBuffers(gl);
-  var textures = initTextures(gl);
-
-  gl.clearColor(0.0, 0.0, 0.0, 1.0);
-  gl.enable(gl.DEPTH_TEST);
-
+var listenForKeyEvents = function () {
   var ignoreKeys = [37, 38, 39, 40];
   window.addEventListener('keydown', function (e) {
     pressedKeys[e.keyCode] = true;
-
-    if(e.keyCode === 70) {
-      selectedTexture += 1;
-      console.log(selectedTexture);
-    }
 
     if(ignoreKeys.indexOf(e.keyCode) !== -1) {
       e.preventDefault();
@@ -48,13 +32,28 @@ var GLStart = function () {
   window.addEventListener('keyup', function (e) {
     pressedKeys[e.keyCode] = false;
   });
+};
 
-  var tick = function (gl, shaderProgram, buffers, textures) {
+var GLStart = function () {
+  var canvas = document.getElementById('gl');
+  canvas.width = window.innerHeight;
+  canvas.height = window.innerWidth;
+
+  var gl = initGL(canvas);
+  var shaderProgram = initShaders(gl);
+  var buffers = initBuffers(gl);
+  var texture = initTexture(gl);
+
+  gl.clearColor(0.0, 0.0, 0.0, 1.0);
+  gl.enable(gl.DEPTH_TEST);
+  listenForKeyEvents();
+
+  var tick = function (gl, shaderProgram, buffers, texture) {
     requestAnimationFrame(tick);
-    drawScene(gl, shaderProgram, buffers, textures);
+    drawScene(gl, shaderProgram, buffers, texture);
     handleDownKeys();
     animate();
-  }.bind(null, gl, shaderProgram, buffers, textures);
+  }.bind(null, gl, shaderProgram, buffers, texture);
 
   tick();
 };
@@ -101,37 +100,22 @@ var animate = function animate () {
   yRot += (ySpeed * elapsed) / 1000;
 };
 
-var initTextures = function (gl) {
-  var textures = [];
-  textures.push(gl.createTexture());
-  textures.push(gl.createTexture());
-  textures.push(gl.createTexture());
+var initTexture = function (gl) {
+  var texture = gl.createTexture();
   var image = new Image();
   image.onload = function () {
-    handleLoadedTextures(gl, textures, image);
+    handleLoadedTexture(gl, texture, image);
   };
 
   image.src = '/img/glass.gif';
-  return textures;
+  return texture;
 };
 
-var handleLoadedTextures = function handleLoadedTexture (gl, textures, image) {
+var handleLoadedTexture = function handleLoadedTexture (gl, texture, image) {
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
-  // nearest
-  gl.bindTexture(gl.TEXTURE_2D, textures[0]);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-
-  // linear
-  gl.bindTexture(gl.TEXTURE_2D, textures[1]);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-
   // Mip map
-  gl.bindTexture(gl.TEXTURE_2D, textures[2]);
+  gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER,
@@ -312,7 +296,7 @@ var initBuffers = function(gl) {
   };
 };
 
-var drawScene = function(gl, shaderProgram, buffers, textures) {
+var drawScene = function(gl, shaderProgram, buffers, texture) {
 
   var cubeVertexPositionBuffer = buffers.cubeVertexPositionBuffer;
   var cubeVertexTextureCoordBuffer = buffers.cubeVertexTextureCoordBuffer;
@@ -363,7 +347,7 @@ var drawScene = function(gl, shaderProgram, buffers, textures) {
                          0);
 
   gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, textures[selectedTexture % textures.length]);
+  gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.uniform1i(shaderProgram.samplerUniform, 0);
 
   // will it blend?
