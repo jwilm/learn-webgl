@@ -145,7 +145,53 @@ var initBuffers = function(gl) {
 
   var cubeVertexPositionBuffer;
   var cubeVertexTextureCoordBuffer;
+  var cubeVertexNormalBuffer;
   var cubeVertexIndexBuffer;
+
+  cubeVertexNormalBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexNormalBuffer);
+  var vertexNormals = [
+    // Front face
+     0.0,  0.0,  1.0,
+     0.0,  0.0,  1.0,
+     0.0,  0.0,  1.0,
+     0.0,  0.0,  1.0,
+
+    // Back face
+     0.0,  0.0, -1.0,
+     0.0,  0.0, -1.0,
+     0.0,  0.0, -1.0,
+     0.0,  0.0, -1.0,
+
+    // Top face
+     0.0,  1.0,  0.0,
+     0.0,  1.0,  0.0,
+     0.0,  1.0,  0.0,
+     0.0,  1.0,  0.0,
+
+    // Bottom face
+     0.0, -1.0,  0.0,
+     0.0, -1.0,  0.0,
+     0.0, -1.0,  0.0,
+     0.0, -1.0,  0.0,
+
+    // Right face
+     1.0,  0.0,  0.0,
+     1.0,  0.0,  0.0,
+     1.0,  0.0,  0.0,
+     1.0,  0.0,  0.0,
+
+    // Left face
+    -1.0,  0.0,  0.0,
+    -1.0,  0.0,  0.0,
+    -1.0,  0.0,  0.0,
+    -1.0,  0.0,  0.0,
+  ];
+  gl.bufferData(gl.ARRAY_BUFFER,
+                new Float32Array(vertexNormals),
+                gl.STATIC_DRAW);
+  cubeVertexNormalBuffer.itemSize = 3;
+  cubeVertexNormalBuffer.numItems = vertexNormals.length / 3;
 
   // Do it all over again for a cube
   cubeVertexPositionBuffer = gl.createBuffer();
@@ -261,7 +307,8 @@ var initBuffers = function(gl) {
   return {
     cubeVertexPositionBuffer: cubeVertexPositionBuffer,
     cubeVertexTextureCoordBuffer: cubeVertexTextureCoordBuffer,
-    cubeVertexIndexBuffer: cubeVertexIndexBuffer
+    cubeVertexIndexBuffer: cubeVertexIndexBuffer,
+    cubeVertexNormalBuffer: cubeVertexNormalBuffer
   };
 };
 
@@ -270,6 +317,7 @@ var drawScene = function(gl, shaderProgram, buffers, textures) {
   var cubeVertexPositionBuffer = buffers.cubeVertexPositionBuffer;
   var cubeVertexTextureCoordBuffer = buffers.cubeVertexTextureCoordBuffer;
   var cubeVertexIndexBuffer = buffers.cubeVertexIndexBuffer;
+  var cubeVertexNormalBuffer = buffers.cubeVertexNormalBuffer;
 
   // Tell webGL about the canvas
   gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
@@ -294,6 +342,14 @@ var drawScene = function(gl, shaderProgram, buffers, textures) {
   mat4.rotate(mvMatrix, mvMatrix, D2R * xRot, [1, 0, 0]);
   mat4.rotate(mvMatrix, mvMatrix, D2R * yRot, [0, 1, 0]);
 
+  gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexNormalBuffer);
+  gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute,
+                         cubeVertexNormalBuffer.itemSize,
+                         gl.FLOAT,
+                         false,
+                         0,
+                         0);
+
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
   gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
     cubeVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
@@ -309,6 +365,42 @@ var drawScene = function(gl, shaderProgram, buffers, textures) {
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, textures[selectedTexture % textures.length]);
   gl.uniform1i(shaderProgram.samplerUniform, 0);
+
+  // Set uUseLighting
+  var lighting = document.getElementById('lighting').checked;
+  gl.uniform1i(shaderProgram.useLightingUniform, lighting);
+
+  if (lighting) {
+    // Set ambient color uniforms
+    gl.uniform3f(
+      shaderProgram.ambientColorUniform,
+      parseFloat(document.getElementById('ambientR').value),
+      parseFloat(document.getElementById('ambientG').value),
+      parseFloat(document.getElementById('ambientB').value)
+    );
+
+    // Push lighting direction
+    var lightingDirection = [
+      parseFloat(document.getElementById('lightDirectionX').value),
+      parseFloat(document.getElementById('lightDirectionY').value),
+      parseFloat(document.getElementById('lightDirectionZ').value),
+    ];
+    var normalizedLD = vec3.create();
+    vec3.normalize(normalizedLD, lightingDirection);
+    // Direction specifies which way light is going, but calculation is based
+    // on where light is coming from. Therefore, increase speed, drop down, and
+    // reverse direction.
+    vec3.scale(normalizedLD, normalizedLD, -1);
+    gl.uniform3fv(shaderProgram.lightingDirectionUniform, normalizedLD);
+
+    // Push directional components
+    gl.uniform3f(
+      shaderProgram.directionalColorUniform,
+      parseFloat(document.getElementById('directionalR').value),
+      parseFloat(document.getElementById('directionalG').value),
+      parseFloat(document.getElementById('directionalB').value)
+    );
+  }
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
   setMatrixUniforms(gl, shaderProgram, pMatrix, mvMatrix);
@@ -379,12 +471,26 @@ var initShaders = function initShaders (gl) {
     gl.getAttribLocation(shaderProgram, 'aTextureCoord');
   gl.enableVertexAttribArray(shaderProgram.textureCoordAttribute);
 
+  shaderProgram.vertexNormalAttribute =
+    gl.getAttribLocation(shaderProgram, 'aVertexNormal');
+  gl.enableVertexAttribArray(shaderProgram.vertexNormalAttribute);
+
   shaderProgram.pMatrixUniform =
     gl.getUniformLocation(shaderProgram, 'uPMatrix');
   shaderProgram.mvMatrixUniform =
     gl.getUniformLocation(shaderProgram, 'uMVMatrix');
+  shaderProgram.nMatrixUniform =
+    gl.getUniformLocation(shaderProgram, 'uNMatrix');
   shaderProgram.samplerUniform =
-    gl.getUniformLocation(shaderProgram, "uSampler");
+    gl.getUniformLocation(shaderProgram, 'uSampler');
+  shaderProgram.useLightingUniform =
+    gl.getUniformLocation(shaderProgram, 'uUseLighting');
+  shaderProgram.ambientColorUniform =
+    gl.getUniformLocation(shaderProgram, 'uAmbientColor');
+  shaderProgram.lightingDirectionUniform =
+    gl.getUniformLocation(shaderProgram, 'uLightingDirection');
+  shaderProgram.directionalColorUniform =
+    gl.getUniformLocation(shaderProgram, 'uDirectionalColor');
 
   return shaderProgram;
 };
@@ -420,9 +526,14 @@ var getShader = function getShader (gl, path) {
   return shader;
 };
 
+var normalMatrix = mat3.create();
 function setMatrixUniforms (gl, shaderProgram, pMatrix, mvMatrix) {
   gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
   gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
+  mat3.fromMat4(normalMatrix, mvMatrix);
+  mat3.invert(normalMatrix, normalMatrix);
+  mat3.transpose(normalMatrix, normalMatrix);
+  gl.uniformMatrix3fv(shaderProgram.nMatrixUniform, false, normalMatrix);
 }
 
 // Export main function

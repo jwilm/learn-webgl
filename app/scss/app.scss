@@ -4,5 +4,27 @@ body {
     background-color: black;
 }
 
-canvas {
+#gl {
+}
+
+#controls {
+  font-size: 0.5em;
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  padding: 20px;
+  label {
+    color: white;
+  }
+  p {
+    text-align: right;
+  }
+
+  input[type=text] {
+    color: white;
+    background-color: #333;
+    border-style: none;
+    padding: 2px 3px;
+    width: 20px;
+  }
 }
