@@ -111,7 +111,7 @@ var initTextures = function (gl) {
     handleLoadedTextures(gl, textures, image);
   };
 
-  image.src = '/img/crate.gif';
+  image.src = '/img/glass.gif';
   return textures;
 };
 
@@ -366,6 +366,19 @@ var drawScene = function(gl, shaderProgram, buffers, textures) {
   gl.bindTexture(gl.TEXTURE_2D, textures[selectedTexture % textures.length]);
   gl.uniform1i(shaderProgram.samplerUniform, 0);
 
+  // will it blend?
+  var blending = document.getElementById('blending').checked;
+  if (blending) {
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.BLEND);
+    gl.disable(gl.DEPTH_TEST);
+    gl.uniform1f(shaderProgram.alphaUniform,
+                 parseFloat(document.getElementById('alpha').value));
+  } else {
+    gl.disable(gl.BLEND);
+    gl.enable(gl.DEPTH_TEST);
+  }
+
   // Set uUseLighting
   var lighting = document.getElementById('lighting').checked;
   gl.uniform1i(shaderProgram.useLightingUniform, lighting);
@@ -491,6 +504,8 @@ var initShaders = function initShaders (gl) {
     gl.getUniformLocation(shaderProgram, 'uLightingDirection');
   shaderProgram.directionalColorUniform =
     gl.getUniformLocation(shaderProgram, 'uDirectionalColor');
+  shaderProgram.alphaUniform =
+    gl.getUniformLocation(shaderProgram, 'uAlpha');
 
   return shaderProgram;
 };
