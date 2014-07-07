@@ -41,24 +41,7 @@ function GLApplication () {
   this.shaderProgram = this.initShaders();
   this.texture = this.initTexture();
 
-  this.objects = [];
-  var box;
-  for(var i=0; i!==9; i++) {
-    box = new Box({texture: this.texture});
-    box.init(gl);
-    this.objects.push(box);
-  }
-
-  var D = 4;
-  this.objects[0].translate( 0,  0, 0);
-  this.objects[1].translate( 0,  D, 0);
-  this.objects[2].translate( 0, -D, 0);
-  this.objects[3].translate( D,  0, 0);
-  this.objects[4].translate(-D,  0, 0);
-  this.objects[5].translate( D,  D, 0);
-  this.objects[6].translate( D, -D, 0);
-  this.objects[7].translate(-D,  D, 0);
-  this.objects[8].translate(-D, -D, 0);
+  this.objects = this.initObjects();
 
   this.pressedKeys = {};
   this.listenForKeyEvents();
@@ -74,6 +57,29 @@ function GLApplication () {
 
   this.tick();
 }
+
+GLApplication.prototype.initObjects = function () {
+  var objects = [];
+  var box;
+
+  for(var i=0; i!==9; i++) {
+    box = new Box({texture: this.texture});
+    box.init(this.gl);
+    objects.push(box);
+  }
+
+  var D = 4;
+  objects[0].translate( 0,  0, 0);
+  objects[1].translate( 0,  D, 0);
+  objects[2].translate( 0, -D, 0);
+  objects[3].translate( D,  0, 0);
+  objects[4].translate(-D,  0, 0);
+  objects[5].translate( D,  D, 0);
+  objects[6].translate( D, -D, 0);
+  objects[7].translate(-D,  D, 0);
+  objects[8].translate(-D, -D, 0);
+  return objects;
+};
 
 GLApplication.prototype.updateViewMatrix = function () {
   // Set view position
