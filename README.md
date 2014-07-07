@@ -6,6 +6,8 @@ solutions to those problems. I am in no way affiliated the afforementioned
 website. The solutions can be viewed by checking out the appropriate `tag`. The
 solutions are a work in progress.
 
+![screenshot](https://raw.githubusercontent.com/jwilm/learn-webgl/master/public/img/screenshot.png)
+
 ## Framework
 Everything you need to get started is in `app/`. The `js` folder contains all of
 the javascript. Most importantly, the file you should be working with is
