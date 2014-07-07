@@ -24,20 +24,26 @@ function GLApplication () {
   this.ySpeed = 50;
 
   // Create some matrices
-  this.mvMatrix = mat4.create();
+  this.vMatrix = mat4.create();
   this.pMatrix = mat4.create();
+  this.mvMatrix = mat4.create();
+
   this.normalMatrix = mat3.create();
   this.normalizedLD = vec3.create();
+
+  // Translate view matrix away from origin
+  mat4.translate(this.vMatrix, this.vMatrix, [0.0, 0.0, -10.0]);
 
   // Storage for stack of mvMatrix
   this._mvStack = [];
 
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
+
   gl.enable(gl.DEPTH_TEST);
 
   this.shaderProgram = this.initShaders();
-  this.buffers = this.initBuffers();
   this.texture = this.initTexture();
+  this.buffers = this.initBuffers();
 
   this.pressedKeys = {};
   this.listenForKeyEvents();
@@ -382,17 +388,20 @@ GLApplication.prototype.drawScene = function() {
   // setup scene perspective
   var viewportAspectRatio = gl.viewportWidth / gl.viewportHeight;
 
-  // Initialize pMatrix, mvMatrix
+  // Initialize perspective matrix
   mat4.perspective(this.pMatrix, 45, viewportAspectRatio, 0.1, 100.0);
-  mat4.identity(this.mvMatrix);
 
-  this.pushMVMatrix();
+  // Model matrix
+  var mMatrix = mat4.create();
+  var mvMatrix = mat4.create();
+  mat4.identity(mMatrix);
 
-  // Draw the square now.. relative to current mvMatrix pos
-  mat4.translate(this.mvMatrix, this.mvMatrix, [0.0, 0.0, this.zPos]);
+  mat4.rotate(mMatrix, mMatrix, D2R * this.xRot, [1, 0, 0]);
+  mat4.rotate(mMatrix, mMatrix, D2R * this.yRot, [0, 1, 0]);
+  mat4.translate(mMatrix, mMatrix, [0.0, 0.0, 0.0]);
 
-  mat4.rotate(this.mvMatrix, this.mvMatrix, D2R * this.xRot, [1, 0, 0]);
-  mat4.rotate(this.mvMatrix, this.mvMatrix, D2R * this.yRot, [0, 1, 0]);
+  // Get model-view matrix
+  mat4.multiply(mvMatrix, this.vMatrix, mMatrix);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexNormalBuffer);
   gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute,
@@ -468,7 +477,7 @@ GLApplication.prototype.drawScene = function() {
   }
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
-  this.setMatrixUniforms();
+  this.setMatrixUniforms(mvMatrix);
   gl.drawElements(gl.TRIANGLES,
                   cubeVertexIndexBuffer.numItems,
                   gl.UNSIGNED_SHORT,
@@ -477,8 +486,6 @@ GLApplication.prototype.drawScene = function() {
   // triangle strip -> first 3 vertices for first triangle, next vertex plus
   // previous two for next triangle and so on.
   gl.drawArrays(gl.TRIANGLE, 0, cubeVertexPositionBuffer.numItems);
-
-  this.popMVMatrix();
 };
 
 
@@ -583,14 +590,15 @@ GLApplication.prototype.getShader = function getShader (path) {
   return shader;
 };
 
-GLApplication.prototype.setMatrixUniforms = function setMatrixUniforms () {
+GLApplication.prototype.setMatrixUniforms =
+  function setMatrixUniforms (mvMatrix) {
 
   var gl = this.gl;
   var shaderProgram = this.shaderProgram;
 
   gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, this.pMatrix);
-  gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, this.mvMatrix);
-  mat3.fromMat4(this.normalMatrix, this.mvMatrix);
+  gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
+  mat3.fromMat4(this.normalMatrix, mvMatrix);
   mat3.invert(this.normalMatrix, this.normalMatrix);
   mat3.transpose(this.normalMatrix, this.normalMatrix);
   gl.uniformMatrix3fv(shaderProgram.nMatrixUniform, false, this.normalMatrix);
