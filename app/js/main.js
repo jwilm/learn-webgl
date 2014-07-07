@@ -13,15 +13,14 @@ function GLApplication () {
   window.addEventListener('resize', this.handleViewportResize.bind(this));
   this.handleViewportResize();
 
+  this._el = this.cacheDOMElements();
+
   this.timeLast = Date.now();
 
   // Initial animation values
-  this.pView = [0.0, 0.0, -12.0];
-  this.xRot = 0;
-  this.yRot = 0;
-
-  this.xSpeed = 50;
-  this.ySpeed = 50;
+  this.pView = [0.0, 0.0, -15.0];
+  this.pTip = 0;
+  this.pTilt = 0;
 
   // Create some matrices
   this.vMatrix = mat4.create();
@@ -31,22 +30,14 @@ function GLApplication () {
   this.normalMatrix = mat3.create();
   this.normalizedLD = vec3.create();
 
-  // Storage for stack of mvMatrix
-  this._mvStack = [];
-
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
-
-  gl.enable(gl.DEPTH_TEST);
 
   this.shaderProgram = this.initShaders();
   this.texture = this.initTexture();
-
-  this.objects = this.initObjects();
+  this.objects = this.initObjects({numStars: 50});
 
   this.pressedKeys = {};
   this.listenForKeyEvents();
-
-  this._el = this.cacheDOMElements();
 
   this.tick = function () {
     requestAnimationFrame(this.tick);
@@ -55,29 +46,25 @@ function GLApplication () {
     this.timeLast = this.animate();
   }.bind(this);
 
+  window.GL = this;
   this.tick();
 }
 
-GLApplication.prototype.initObjects = function () {
+GLApplication.prototype.initObjects = function (opts) {
   var objects = [];
-  var box;
-
-  for(var i=0; i!==9; i++) {
-    box = new Box({texture: this.texture});
-    box.init(this.gl);
-    objects.push(box);
+  var star;
+  var twinkle = this._el.twinkle;
+  for(var i=0; i!==opts.numStars; i++) {
+    star = new Star({
+      startingDistance: (i / opts.numStars) * 5.0,
+      rotationSpeed: i / opts.numStars,
+      twinkle: twinkle,
+      texture: this.texture,
+      spinOffset: i / 10
+    });
+    star.init(this.gl);
+    objects.push(star);
   }
-
-  var D = 4;
-  objects[0].translate( 0,  0, 0);
-  objects[1].translate( 0,  D, 0);
-  objects[2].translate( 0, -D, 0);
-  objects[3].translate( D,  0, 0);
-  objects[4].translate(-D,  0, 0);
-  objects[5].translate( D,  D, 0);
-  objects[6].translate( D, -D, 0);
-  objects[7].translate(-D,  D, 0);
-  objects[8].translate(-D, -D, 0);
   return objects;
 };
 
@@ -85,6 +72,8 @@ GLApplication.prototype.updateViewMatrix = function () {
   // Set view position
   mat4.identity(this.vMatrix);
   mat4.translate(this.vMatrix, this.vMatrix, this.pView);
+  mat4.rotate(this.vMatrix, this.vMatrix, this.pTip, [1.0, 0.0, 0.0]);
+  mat4.rotate(this.vMatrix, this.vMatrix, this.pTilt, [0.0, 1.0, 0.0]);
 };
 
 GLApplication.prototype.handleViewportResize = function () {
@@ -96,34 +85,21 @@ GLApplication.prototype.handleViewportResize = function () {
 
 GLApplication.prototype.cacheDOMElements = function () {
   return {
-    alpha: document.getElementById('alpha'),
-    blending: document.getElementById('blending'),
-    lighting: document.getElementById('lighting'),
-    ambientR: document.getElementById('ambientR'),
-    ambientG: document.getElementById('ambientG'),
-    ambientB: document.getElementById('ambientB'),
-    lightDirectionX: document.getElementById('lightDirectionX'),
-    lightDirectionY: document.getElementById('lightDirectionY'),
-    lightDirectionZ: document.getElementById('lightDirectionZ'),
-    directionalR: document.getElementById('directionalR'),
-    directionalG: document.getElementById('directionalG'),
-    directionalB: document.getElementById('directionalB')
+    twinkle: document.getElementById('twinkle'),
   };
 };
 
-GLApplication.prototype.pushMVMatrix = function () {
-  // This is a very naive implementation of pushMVMatrix. We should probably
-  // initialize a number of matrices before rendering starts, copy into those
-  // until we run out, and only create new ones if necessary. Ideally, there
-  // will always be a sufficient stack available so no new allocations are
-  // done.
-  this._mvStack.push(mat4.clone(this.mvMatrix));
-  return this;
-};
-
-GLApplication.prototype.popMVMatrix = function () {
-  this.mvMatrix = this._mvStack.pop();
-  return this.mvMatrix;
+var KEY_CODE = {
+  W: 87,
+  A: 65,
+  S: 83,
+  D: 68,
+  PAGE_UP: 33,
+  PAGE_DOWN: 34,
+  ARROW_UP: 38,
+  ARROW_DOWN: 40,
+  ARROW_LEFT: 37,
+  ARROW_RIGHT: 39
 };
 
 GLApplication.prototype.listenForKeyEvents = function () {
@@ -142,28 +118,40 @@ GLApplication.prototype.listenForKeyEvents = function () {
 };
 
 GLApplication.prototype.handleDownKeys = function () {
-  if(this.pressedKeys[37]) {
-    this.ySpeed -= 0.5;
-  }
-
-  if(this.pressedKeys[39]) {
-    this.ySpeed += 0.5;
-  }
-
-  if(this.pressedKeys[40]) {
-    this.xSpeed -= 0.5;
-  }
-
-  if(this.pressedKeys[38]) {
-    this.xSpeed += 0.5;
-  }
-
-  if(this.pressedKeys[33]) {
+  // WASD
+  if(this.pressedKeys[KEY_CODE.W]) {
     this.pView[2] += 0.5;
   }
-
-  if(this.pressedKeys[34]) {
+  if(this.pressedKeys[KEY_CODE.A]) {
+    this.pView[0] += 0.5;
+  }
+  if(this.pressedKeys[KEY_CODE.S]) {
     this.pView[2] -= 0.5;
+  }
+  if(this.pressedKeys[KEY_CODE.D]) {
+    this.pView[0] -= 0.5;
+  }
+
+  // PAGE UP/DOWN
+  if(this.pressedKeys[KEY_CODE.PAGE_UP]) {
+    this.pView[1] -= 0.5;
+  }
+  if(this.pressedKeys[KEY_CODE.PAGE_DOWN]) {
+    this.pView[1] += 0.5;
+  }
+
+  // Arrow keys (tip/tilt)
+  if(this.pressedKeys[KEY_CODE.ARROW_UP]) {
+    this.pTip += 0.1;
+  }
+  if(this.pressedKeys[KEY_CODE.ARROW_DOWN]) {
+    this.pTip -= 0.1;
+  }
+  if(this.pressedKeys[KEY_CODE.ARROW_LEFT]) {
+    this.pTilt += 0.1;
+  }
+  if(this.pressedKeys[KEY_CODE.ARROW_RIGHT]) {
+    this.pTilt -= 0.1;
   }
 };
 
@@ -190,7 +178,7 @@ GLApplication.prototype.initGL = function (canvas) {
 
 GLApplication.prototype.animate = function animate () {
   var timeNow = Date.now();
-  var elapsed = this.timeLast - timeNow;
+  var elapsed = timeNow - this.timeLast;
   for(var i=0; i!==this.objects.length; i++) {
     this.objects[i].animate(elapsed);
   }
@@ -204,7 +192,7 @@ GLApplication.prototype.initTexture = function initTexture () {
     this.handleLoadedTexture(texture, image);
   }.bind(this);
 
-  image.src = '/img/glass.gif';
+  image.src = '/img/star.gif';
   return texture;
 };
 
@@ -218,8 +206,7 @@ GLApplication.prototype.handleLoadedTexture =
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER,
-                   gl.LINEAR_MIPMAP_NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   gl.generateMipmap(gl.TEXTURE_2D);
 
   gl.bindTexture(gl.TEXTURE_2D, null);
@@ -229,68 +216,18 @@ GLApplication.prototype.drawScene = function() {
   var gl = this.gl;
   var shaderProgram = this.shaderProgram;
 
-  // Tell webGL about the canvas
   gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-
-  // Clear the canvas
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  // setup scene perspective
-  var viewportAspectRatio = gl.viewportWidth / gl.viewportHeight;
-
   // Initialize perspective matrix
+  var viewportAspectRatio = gl.viewportWidth / gl.viewportHeight;
   mat4.perspective(this.pMatrix, 45, viewportAspectRatio, 0.1, 100.0);
 
+  // Handle any motion of the view port
   this.updateViewMatrix();
 
-  // will it blend?
-  var blending = this._el.blending.checked;
-  if (blending) {
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-    gl.enable(gl.BLEND);
-    gl.disable(gl.DEPTH_TEST);
-    gl.uniform1f(shaderProgram.alphaUniform,
-                 parseFloat(this._el.alpha.value));
-  } else {
-    gl.disable(gl.BLEND);
-    gl.enable(gl.DEPTH_TEST);
-  }
-
-  // Set uUseLighting
-  var lighting = this._el.lighting.checked;
-  gl.uniform1i(shaderProgram.useLightingUniform, lighting);
-
-  if (lighting) {
-    // Set ambient color uniforms
-    gl.uniform3f(
-      shaderProgram.ambientColorUniform,
-      parseFloat(this._el.ambientR.value),
-      parseFloat(this._el.ambientG.value),
-      parseFloat(this._el.ambientB.value)
-    );
-
-    // Push lighting direction
-    var lightingDirection = [
-      parseFloat(this._el.lightDirectionX.value),
-      parseFloat(this._el.lightDirectionY.value),
-      parseFloat(this._el.lightDirectionZ.value),
-    ];
-
-    vec3.normalize(this.normalizedLD, lightingDirection);
-    // Direction specifies which way light is going, but calculation is based
-    // on where light is coming from. Therefore, increase speed, drop down, and
-    // reverse direction.
-    vec3.scale(this.normalizedLD, this.normalizedLD, -1);
-    gl.uniform3fv(shaderProgram.lightingDirectionUniform, this.normalizedLD);
-
-    // Push directional components
-    gl.uniform3f(
-      shaderProgram.directionalColorUniform,
-      parseFloat(this._el.directionalR.value),
-      parseFloat(this._el.directionalG.value),
-      parseFloat(this._el.directionalB.value)
-    );
-  }
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+  gl.enable(gl.BLEND);
 
   for(var i=0; i!==this.objects.length; i++) {
     this.objects[i].draw(gl, shaderProgram, this.pMatrix, this.vMatrix);
@@ -340,28 +277,14 @@ GLApplication.prototype.initShaders = function initShaders () {
     gl.getAttribLocation(shaderProgram, 'aTextureCoord');
   gl.enableVertexAttribArray(shaderProgram.textureCoordAttribute);
 
-  shaderProgram.vertexNormalAttribute =
-    gl.getAttribLocation(shaderProgram, 'aVertexNormal');
-  gl.enableVertexAttribArray(shaderProgram.vertexNormalAttribute);
-
   shaderProgram.pMatrixUniform =
     gl.getUniformLocation(shaderProgram, 'uPMatrix');
   shaderProgram.mvMatrixUniform =
     gl.getUniformLocation(shaderProgram, 'uMVMatrix');
-  shaderProgram.nMatrixUniform =
-    gl.getUniformLocation(shaderProgram, 'uNMatrix');
   shaderProgram.samplerUniform =
     gl.getUniformLocation(shaderProgram, 'uSampler');
-  shaderProgram.useLightingUniform =
-    gl.getUniformLocation(shaderProgram, 'uUseLighting');
-  shaderProgram.ambientColorUniform =
-    gl.getUniformLocation(shaderProgram, 'uAmbientColor');
-  shaderProgram.lightingDirectionUniform =
-    gl.getUniformLocation(shaderProgram, 'uLightingDirection');
-  shaderProgram.directionalColorUniform =
-    gl.getUniformLocation(shaderProgram, 'uDirectionalColor');
-  shaderProgram.alphaUniform =
-    gl.getUniformLocation(shaderProgram, 'uAlpha');
+  shaderProgram.colorUniform =
+    gl.getUniformLocation(shaderProgram, 'uColor');
 
   return shaderProgram;
 };

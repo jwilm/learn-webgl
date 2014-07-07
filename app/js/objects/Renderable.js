@@ -12,6 +12,7 @@ function Renderable () {
   // model matrix
   this.mMatrix = mat4.create();
   this.normalMatrix = mat3.create();
+  this.mvMatrix = mat4.create();
 }
 
 /**
@@ -34,6 +35,17 @@ Renderable.prototype.translate = function (dx, dy, dz) {
   this.position[0] = this.position[0] + dx;
   this.position[1] = this.position[1] + dy;
   this.position[2] = this.position[2] + dz;
+};
+
+/**
+ * translate to a particular location
+ * @method moveTo
+ */
+Renderable.prototype.moveTo = function (x, y, z) {
+  this._mMatrixNeedsUpdate = true;
+  this.position[0] = x;
+  this.position[1] = y;
+  this.position[2] = z;
 };
 
 /**

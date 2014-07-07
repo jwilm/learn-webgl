@@ -125,7 +125,6 @@ var Box = (function () {
   function Box (opts) {
     Renderable.prototype.constructor.apply(this, arguments);
     this.texture = opts.texture;
-    this.mvMatrix = mat4.create();
 
     this.vRotation = [
       Math.random() * 20 * D2R / 1000,
