@@ -24,6 +24,7 @@ module.exports = function(grunt) {
           'vendor/js/gl-matrix.js',
           'app/js/before.js',
           'app/js/shaders.js',
+          'app/js/objects/**/*.js',
           'app/js/main.js',
           'app/js/after.js'
         ],
@@ -112,7 +113,7 @@ module.exports = function(grunt) {
 
       return shaderCollection;
     }, {}).then(function(shaders) {
-      var JS = 'var shaders = ' + JSON.stringify(shaders, null, '  ') + ';';
+      var JS = 'var SHADERS = ' + JSON.stringify(shaders, null, '  ') + ';';
       return writeFile(this.data.dest, JS, 'utf8');
     }).then(function () {
       return done();
