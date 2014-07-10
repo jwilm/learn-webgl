@@ -18,12 +18,13 @@ function GLApplication () {
   this.timeLast = Date.now();
 
   // Initial animation values
-  this.pView = [0.0, 0.0, -15.0];
-  this.pTip = 0;
+  this.pView = [0.0, 0.0, 0.0];
+  this.pTip = Math.PI;
   this.pTilt = 0;
 
   // Create some matrices
   this.vMatrix = mat4.create();
+  this.vInverse = mat4.create();
   this.pMatrix = mat4.create();
   this.mvMatrix = mat4.create();
 
@@ -38,6 +39,7 @@ function GLApplication () {
 
   this.pressedKeys = {};
   this.listenForKeyEvents();
+
 
   this.tick = function () {
     requestAnimationFrame(this.tick);
@@ -63,6 +65,7 @@ GLApplication.prototype.initObjects = function (opts) {
       spinOffset: i / 10
     });
     star.init(this.gl);
+    star.translate(0, 0, 15.0);
     objects.push(star);
   }
   return objects;
@@ -118,18 +121,19 @@ GLApplication.prototype.listenForKeyEvents = function () {
 };
 
 GLApplication.prototype.handleDownKeys = function () {
-  // WASD
+  // Forward/reverse
   if(this.pressedKeys[KEY_CODE.W]) {
     this.pView[2] += 0.5;
-  }
-  if(this.pressedKeys[KEY_CODE.A]) {
-    this.pView[0] += 0.5;
   }
   if(this.pressedKeys[KEY_CODE.S]) {
     this.pView[2] -= 0.5;
   }
-  if(this.pressedKeys[KEY_CODE.D]) {
+  // strafe left/right
+  if(this.pressedKeys[KEY_CODE.A]) {
     this.pView[0] -= 0.5;
+  }
+  if(this.pressedKeys[KEY_CODE.D]) {
+    this.pView[0] += 0.5;
   }
 
   // PAGE UP/DOWN
@@ -223,6 +227,8 @@ GLApplication.prototype.drawScene = function() {
   var viewportAspectRatio = gl.viewportWidth / gl.viewportHeight;
   mat4.perspective(this.pMatrix, 45, viewportAspectRatio, 0.1, 100.0);
 
+  mat4.invert(this.vInverse, this.vMatrix);
+
   // Handle any motion of the view port
   this.updateViewMatrix();
 
@@ -230,7 +236,7 @@ GLApplication.prototype.drawScene = function() {
   gl.enable(gl.BLEND);
 
   for(var i=0; i!==this.objects.length; i++) {
-    this.objects[i].draw(gl, shaderProgram, this.pMatrix, this.vMatrix);
+    this.objects[i].draw(gl, shaderProgram, this.pMatrix, this.vInverse);
   }
 };
 

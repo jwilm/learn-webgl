@@ -33,7 +33,7 @@ var Star = (function() {
     }
 
     // Calculate position in cartesian space
-    this.moveTo(this.dist * cos(this.angle), this.dist * sin(this.angle), 0);
+    this.moveTo(this.dist * cos(this.angle), this.dist * sin(this.angle), this.position[2]);
   };
 
   var initialized = false;
