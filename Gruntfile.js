@@ -25,6 +25,7 @@ module.exports = function(grunt) {
           'app/js/before.js',
           'app/js/shaders.js',
           'app/js/objects/**/*.js',
+          'app/js/Camera.js',
           'app/js/main.js',
           'app/js/after.js'
         ],
