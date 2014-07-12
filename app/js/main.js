@@ -18,9 +18,10 @@ function GLApplication () {
   this.timeLast = Date.now();
 
   // Initial animation values
-  this.pView = [0.0, 0.0, 0.0];
-  this.pTip = Math.PI;
-  this.pTilt = 0;
+  this._camera = new Camera();
+  this._camera.rotate(0, Math.PI);
+  this._moving = vec4.fromValues(0, 0, 0, 1);
+  this._rotation = [0, 0];
 
   // Create some matrices
   this.vMatrix = mat4.create();
@@ -71,12 +72,10 @@ GLApplication.prototype.initObjects = function (opts) {
   return objects;
 };
 
-GLApplication.prototype.updateViewMatrix = function () {
+GLApplication.prototype.updateCamera = function () {
   // Set view position
-  mat4.identity(this.vMatrix);
-  mat4.translate(this.vMatrix, this.vMatrix, this.pView);
-  mat4.rotate(this.vMatrix, this.vMatrix, this.pTip, [1.0, 0.0, 0.0]);
-  mat4.rotate(this.vMatrix, this.vMatrix, this.pTilt, [0.0, 1.0, 0.0]);
+  this._camera.move(this._moving);
+  this._camera.rotate(this._rotation[0], this._rotation[1]);
 };
 
 GLApplication.prototype.handleViewportResize = function () {
@@ -121,41 +120,50 @@ GLApplication.prototype.listenForKeyEvents = function () {
 };
 
 GLApplication.prototype.handleDownKeys = function () {
+  this._moving[0] = 0;
+  this._moving[1] = 0;
+  this._moving[2] = 0;
+  this._moving[3] = 0;
+  this._rotation[0] = 0;
+  this._rotation[1] = 0;
+
   // Forward/reverse
   if(this.pressedKeys[KEY_CODE.W]) {
-    this.pView[2] += 0.5;
+    this._moving[2] = -0.5;
   }
   if(this.pressedKeys[KEY_CODE.S]) {
-    this.pView[2] -= 0.5;
+    this._moving[2] = 0.5;
   }
   // strafe left/right
   if(this.pressedKeys[KEY_CODE.A]) {
-    this.pView[0] -= 0.5;
+    this._moving[0] = -0.5;
   }
   if(this.pressedKeys[KEY_CODE.D]) {
-    this.pView[0] += 0.5;
+    this._moving[0] = 0.5;
   }
 
   // PAGE UP/DOWN
   if(this.pressedKeys[KEY_CODE.PAGE_UP]) {
-    this.pView[1] -= 0.5;
+    // this.pView[1] -= 0.5;
   }
   if(this.pressedKeys[KEY_CODE.PAGE_DOWN]) {
-    this.pView[1] += 0.5;
+    // this.pView[1] += 0.5;
   }
+
+  var rot = D2R * 4;
 
   // Arrow keys (tip/tilt)
   if(this.pressedKeys[KEY_CODE.ARROW_UP]) {
-    this.pTip += 0.1;
+    this._rotation[0] = rot;
   }
   if(this.pressedKeys[KEY_CODE.ARROW_DOWN]) {
-    this.pTip -= 0.1;
+    this._rotation[0] = -rot;
   }
   if(this.pressedKeys[KEY_CODE.ARROW_LEFT]) {
-    this.pTilt += 0.1;
+    this._rotation[1] = rot;
   }
   if(this.pressedKeys[KEY_CODE.ARROW_RIGHT]) {
-    this.pTilt -= 0.1;
+    this._rotation[1] = -rot;
   }
 };
 
@@ -227,16 +235,16 @@ GLApplication.prototype.drawScene = function() {
   var viewportAspectRatio = gl.viewportWidth / gl.viewportHeight;
   mat4.perspective(this.pMatrix, 45, viewportAspectRatio, 0.1, 100.0);
 
-  mat4.invert(this.vInverse, this.vMatrix);
-
   // Handle any motion of the view port
-  this.updateViewMatrix();
+  this.updateCamera();
+
+  var viewMatrix = this._camera.getViewMatrix();
 
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
   gl.enable(gl.BLEND);
 
   for(var i=0; i!==this.objects.length; i++) {
-    this.objects[i].draw(gl, shaderProgram, this.pMatrix, this.vInverse);
+    this.objects[i].draw(gl, shaderProgram, this.pMatrix, viewMatrix);
   }
 };
 

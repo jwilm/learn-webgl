@@ -12,7 +12,7 @@ Camera.prototype.move = function (_vec4) {
   this._mat[14] = this._mat[14] + this._vec4[2];
 };
 
-Camera.prototype.rotate = function (pitch, yaw) {
+Camera.prototype.rotate = function (yaw, pitch) {
   mat4.rotate(this._mat, this._mat, pitch, [0, 1, 0]);
   mat4.rotate(this._mat, this._mat, yaw, [1, 0, 0]);
 };
