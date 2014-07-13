@@ -1,12 +1,19 @@
 var Star = (function() {
+  var id = 0;
   function Star (opts) {
     Renderable.prototype.constructor.apply(this);
+
     this.angle = 0;
     this.spin = D2R * 0.3;
+    this.angle = id * 25 * D2R;
     this.dist = opts.startingDistance;
     this.rotationSpeed = opts.rotationSpeed;
     this._twinkle = opts.twinkle;
+    this._spinTotal = 0;
     this.texture = opts.texture;
+    this.id = id++;
+
+    this._sprite = true;
 
     // initial rotation offset
     this.rotate(0, 0, opts.spinOffset);
@@ -19,21 +26,26 @@ var Star = (function() {
   var effectiveFPMS = 60 / 1000;
   var sin = Math.sin;
   var cos = Math.cos;
+  var _ANIMATE = false;
 
   Star.prototype.animate = function (dt) {
     // Rotate about center
-    this.angle += this.rotationSpeed * dt * effectiveFPMS / 10;
+    if(_ANIMATE) {
+      this.angle += this.rotationSpeed * dt * effectiveFPMS / 10;
 
-    // Decrease distance and reset when reaching center
-    this.dist -= (0.01 * dt * effectiveFPMS);
+      // Decrease distance and reset when reaching center
+      this.dist -= (0.01 * dt * effectiveFPMS);
 
-    if(this.dist < 0.0) {
-      this.dist += 5.0;
-      this.randomiseColors();
+      if(this.dist < 0.0) {
+        this.dist += 5.0;
+        this.randomiseColors();
+      }
     }
 
     // Calculate position in cartesian space
-    this.moveTo(this.dist * cos(this.angle), this.dist * sin(this.angle), this.position[2]);
+    this.moveTo([this.dist * cos(this.angle),
+                this.dist * sin(this.angle),
+                this._translation[2]]);
   };
 
   var initialized = false;
@@ -84,25 +96,39 @@ var Star = (function() {
     this.twinkleB = random();
   };
 
+  var acos = Math.acos;
+  var _temp = quat.create();
+  var _cameraPos = mat4.create();
   Star.prototype.draw = function (gl, shaderProgram, pMatrix, vMatrix) {
 
+    mat4.invert(_cameraPos, vMatrix);
+    this._spinTotal += this.spin;
+
+    // draw rotating star in background
     if(this._twinkle.checked) {
       // Draw non rotating star in alternate twinkling color
       gl.uniform3f(shaderProgram.colorUniform,
         this.twinkleR, this.twinkleG, this.twinkleB);
-      var zRot = this.rotation[2];
-      this.rotate(0, 0, -zRot);
+
+      this.lookAt([_cameraPos[12], _cameraPos[13], _cameraPos[14]], 0);
+      // stash current rotation and change it
+      // quat.copy(_temp, this._rotation);
+      // quat.setAxisAngle(this._rotation, [0, 0, 1], 0);
+
+      // Draw
       this._draw(gl, shaderProgram, pMatrix, vMatrix);
-      this.rotate(0, 0, zRot);
+
+      // reset old rotation
+      // quat.copy(this._rotation, _temp);
     }
 
-    this.rotate(0, 0, this.spin);
+    this.lookAt([_cameraPos[12], _cameraPos[13], _cameraPos[14]], this._spinTotal);
     gl.uniform3f(shaderProgram.colorUniform, this.r, this.g, this.b);
-
     this._draw(gl, shaderProgram, pMatrix, vMatrix);
   };
 
   Star.prototype._draw = function (gl, shaderProgram, pMatrix, vMatrix) {
+
     this.modelViewMatrix(this.mvMatrix, vMatrix);
 
     gl.activeTexture(gl.TEXTURE0);

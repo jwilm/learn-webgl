@@ -3,14 +3,14 @@
  * @class Renderable
  */
 function Renderable () {
-  // Rotation about i, j, k
-  this.rotation = [0.0, 0.0, 0.0];
+  this._eye = vec3.create();
+  this._up = vec3.fromValues(0, 1, 0);
 
-  // Position
-  this.position = [0.0, 0.0, 0.0];
+  this._translation = vec3.create();
+  this._rotation = quat.create();
+  this._mat = mat4.create();
 
   // model matrix
-  this.mMatrix = mat4.create();
   this.normalMatrix = mat3.create();
   this.mvMatrix = mat4.create();
 }
@@ -20,57 +20,34 @@ function Renderable () {
  * @method rotate
  */
 Renderable.prototype.rotate = function (dx, dy, dz) {
-  this._mMatrixNeedsUpdate = true;
-  this.rotation[0] = this.rotation[0] + dx;
-  this.rotation[1] = this.rotation[1] + dy;
-  this.rotation[2] = this.rotation[2] + dz;
+  if (dx !== 0) {
+    quat.rotateX(this._rotation, this._rotation, dx);
+  }
+  if (dy !== 0) {
+    quat.rotateY(this._rotation, this._rotation, dy);
+  }
+  if (dz !== 0) {
+    quat.rotateZ(this._rotation, this._rotation, dz);
+  }
+  return this;
 };
 
 /**
  * translate the object from its current position
  * @method translate
  */
-Renderable.prototype.translate = function (dx, dy, dz) {
-  this._mMatrixNeedsUpdate = true;
-  this.position[0] = this.position[0] + dx;
-  this.position[1] = this.position[1] + dy;
-  this.position[2] = this.position[2] + dz;
+Renderable.prototype.translate = function (_vec3) {
+  vec3.add(this._translation, this._translation, _vec3);
+  return this;
 };
 
 /**
  * translate to a particular location
  * @method moveTo
  */
-Renderable.prototype.moveTo = function (x, y, z) {
-  this._mMatrixNeedsUpdate = true;
-  this.position[0] = x;
-  this.position[1] = y;
-  this.position[2] = z;
-};
-
-/**
- * Calculate the model matrix based on current orientation and position.
- * @method updateModelMatrix
- */
-Renderable.prototype.updateModelMatrix = function () {
-  mat4.identity(this.mMatrix);
-  mat4.rotate(this.mMatrix, this.mMatrix, this.rotation[0], [1, 0, 0]);
-  mat4.rotate(this.mMatrix, this.mMatrix, this.rotation[1], [0, 1, 0]);
-  mat4.rotate(this.mMatrix, this.mMatrix, this.rotation[2], [0, 0, 1]);
-  mat4.translate(this.mMatrix, this.mMatrix, this.position);
-  this._mMatrixNeedsUpdate = false;
-};
-
-/**
- * Return the model matrix. Recalculates it if necessary.
- * @method getModelMatrix
- */
-Renderable.prototype.getModelMatrix = function () {
-  if(this._mMatrixNeedsUpdate) {
-    this.updateModelMatrix();
-  }
-
-  return this.mMatrix;
+Renderable.prototype.moveTo = function (_vec3) {
+  vec3.copy(this._translation, _vec3);
+  return this;
 };
 
 /**
@@ -80,7 +57,8 @@ Renderable.prototype.getModelMatrix = function () {
  * @param {mat4} vMatrix - current view
  */
 Renderable.prototype.modelViewMatrix = function (mvMatrix, vMatrix) {
-  mat4.multiply(mvMatrix, vMatrix, this.getModelMatrix());
+  mat4.fromRotationTranslation(this._mat, this._rotation, this._translation);
+  return mat4.multiply(mvMatrix, vMatrix, this._mat);
 };
 
 /**
@@ -91,6 +69,19 @@ Renderable.prototype.modelViewMatrix = function (mvMatrix, vMatrix) {
  */
 Renderable.prototype.draw = function (gl, viewMatrix, shaderProgram) {
 
+};
+
+/**
+ * Look at a point
+ * @param {vec3} target the location to look at
+ */
+
+var los = vec3.create();
+Renderable.prototype.lookAt = function (target) {
+  vec3.subtract(los, target, this._translation);
+  vec3.cross(los, target, los);
+  vec3.normalize(los, los);
+  quat.setAxisAngle(this._rotation, los, Math.PI / 2);
 };
 
 Renderable.prototype.setMatrixUniforms =

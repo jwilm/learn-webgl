@@ -66,7 +66,7 @@ GLApplication.prototype.initObjects = function (opts) {
       spinOffset: i / 10
     });
     star.init(this.gl);
-    star.translate(0, 0, 15.0);
+    star.translate([0, 0, 15.0]);
     objects.push(star);
   }
   return objects;
@@ -224,6 +224,7 @@ GLApplication.prototype.handleLoadedTexture =
   gl.bindTexture(gl.TEXTURE_2D, null);
 };
 
+var count = 0;
 GLApplication.prototype.drawScene = function() {
   var gl = this.gl;
   var shaderProgram = this.shaderProgram;
@@ -238,14 +239,14 @@ GLApplication.prototype.drawScene = function() {
   // Handle any motion of the view port
   this.updateCamera();
 
-  var viewMatrix = this._camera.getViewMatrix();
-
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
   gl.enable(gl.BLEND);
 
+  var vMatrix = this._camera.getViewMatrix();
   for(var i=0; i!==this.objects.length; i++) {
-    this.objects[i].draw(gl, shaderProgram, this.pMatrix, viewMatrix);
+    this.objects[i].draw(gl, shaderProgram, this.pMatrix, vMatrix);
   }
+  count += 1;
 };
 
 GLApplication.prototype.loadShader = function loadShader (source, type) {
